@@ -1,0 +1,17 @@
+{
+  "name": "Min dag",
+  "short_name": "Min dag",
+  "description": "Morgen-, eftermiddags- og aftenrutine for børn. Skifter efter ugedag.",
+  "lang": "da",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#fbf7ff",
+  "theme_color": "#ffca3a",
+  "icons": [
+    { "src": "./icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "./icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "./icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Min dag</title>
+<link rel="manifest" href="./manifest.webmanifest" />
+<meta name="theme-color" content="#ffca3a" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<link rel="apple-touch-icon" href="./icon-192.png" />
+<style>
+:root{
+  --ink:#2b2350; --ink-soft:#6f6890; --line:#eee7f2; --card:#fff;
+  --sun1:#ffd45e; --sun2:#ffb03a; --kid:#ffb03a;
+  --ok:#34c759; --tap:60px; --radius:22px;
+  --shadow:0 8px 24px rgba(60,40,30,.10); --shadow-lg:0 18px 48px rgba(60,40,30,.20);
+  --font: ui-rounded, "SF Pro Rounded", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+*{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+html,body{margin:0;padding:0;}
+body{
+  font-family:var(--font); color:var(--ink);
+  background:
+    radial-gradient(900px 380px at 12% -6%, #fff3c9, transparent 60%),
+    radial-gradient(900px 420px at 100% 0%, #dff1ff, transparent 55%),
+    #fbf7ff;
+  min-height:100dvh;
+  padding: max(14px, env(safe-area-inset-top)) clamp(12px,3vw,28px) calc(28px + env(safe-area-inset-bottom));
+  max-width:1000px; margin-inline:auto;
+}
+h1,h2,h3{margin:0; font-weight:800;}
+
+/* ---------- Header med sol, ur og dato ---------- */
+.header{
+  display:flex; align-items:center; gap:16px; flex-wrap:wrap;
+  background:linear-gradient(135deg,var(--sun1),var(--sun2));
+  color:#fff; border-radius:var(--radius); padding:18px 22px; box-shadow:var(--shadow);
+  margin-bottom:14px;
+}
+.header .sun{font-size:2.6rem; line-height:1;}
+.header .when{flex:1; min-width:160px;}
+.header .clock{font-size:2.6rem; font-weight:800; letter-spacing:1px; line-height:1;}
+.header .date{font-size:1.05rem; font-weight:700; opacity:.95; margin-top:2px; text-transform:capitalize;}
+.header .bank{
+  background:rgba(255,255,255,.25); border-radius:999px; padding:10px 16px;
+  font-weight:800; font-size:1.1rem; white-space:nowrap;
+}
+.header .gear{
+  border:none; background:rgba(255,255,255,.25); color:#fff; width:var(--tap); height:var(--tap);
+  border-radius:16px; font-size:1.5rem; cursor:pointer;
+}
+.install{display:none; border:none; background:#fff; color:var(--ink); font-weight:800;
+  border-radius:16px; padding:0 16px; height:var(--tap); cursor:pointer; font-family:var(--font);}
+.install.show{display:inline-flex; align-items:center; gap:6px;}
+
+/* ---------- Børne-vælger ---------- */
+.kids{display:flex; gap:12px; margin-bottom:14px;}
+.kid{
+  flex:1; border:none; cursor:pointer; font-family:var(--font); font-weight:800; font-size:1.3rem;
+  padding:14px 12px; border-radius:18px; background:#fff; color:var(--ink);
+  box-shadow:var(--shadow); display:flex; align-items:center; justify-content:center; gap:10px;
+  border:3px solid transparent; min-height:var(--tap); transition:transform .1s ease;
+}
+.kid .ke{font-size:1.7rem;}
+.kid[aria-current="true"]{border-color:var(--kc,#ffb03a); transform:translateY(-2px);
+  background:color-mix(in srgb, var(--kc,#ffb03a) 12%, white);}
+.kid .kstars{font-size:.95rem; color:var(--ink-soft); font-weight:700;}
+
+/* ---------- Perioder (faner) ---------- */
+.tabs{display:flex; gap:10px; margin-bottom:16px; flex-wrap:wrap;}
+.tab{
+  flex:1 1 150px; border:none; cursor:pointer; font-family:var(--font); font-weight:800;
+  font-size:1.15rem; padding:14px 12px; border-radius:18px; background:#fff; color:var(--ink);
+  box-shadow:var(--shadow); display:flex; align-items:center; justify-content:center; gap:8px;
+  border:3px solid transparent; transition:transform .1s ease;
+}
+.tab .te{font-size:1.4rem;}
+.tab[aria-selected="true"]{border-color:var(--accent,#ffb03a); transform:translateY(-2px);}
+.tab .check-badge{color:var(--ok); font-size:1.2rem;}
+
+/* ---------- Fremskridt ---------- */
+.progress{
+  background:#fff; border-radius:var(--radius); padding:14px 18px; box-shadow:var(--shadow);
+  margin-bottom:16px; display:flex; align-items:center; gap:14px;
+}
+.progress .ptext{font-weight:800; font-size:1.15rem; white-space:nowrap;}
+.progress .bar{flex:1; height:16px; border-radius:999px; background:#f0ebf5; overflow:hidden;}
+.progress .fill{height:100%; width:0%; border-radius:999px;
+  background:linear-gradient(90deg,var(--sun1),var(--sun2)); transition:width .45s cubic-bezier(.2,.8,.2,1);}
+
+/* ---------- Opgaveliste ---------- */
+.list{display:grid; grid-template-columns:1fr; gap:12px;}
+@media(min-width:720px){ .list.two{grid-template-columns:1fr 1fr;} }
+.task{
+  display:flex; align-items:center; gap:14px; background:var(--tint,#fff);
+  border:1px solid rgba(0,0,0,.05); border-radius:18px; padding:12px 14px; box-shadow:var(--shadow);
+  cursor:pointer; user-select:none;
+}
+.task .time{
+  flex:0 0 auto; min-width:62px; text-align:center; font-weight:800; font-size:1.05rem;
+  background:rgba(255,255,255,.75); border-radius:12px; padding:8px 6px; color:var(--ink);
+}
+.task .emoji{font-size:1.7rem; flex:0 0 auto;}
+.task .label{flex:1; font-weight:700; font-size:1.2rem; line-height:1.25;}
+.task .check{
+  flex:0 0 auto; width:44px; height:44px; border-radius:50%; border:3px solid #cfc7dd;
+  background:#fff; display:grid; place-items:center; font-size:1.3rem; color:#fff;
+}
+.task.done{filter:saturate(.6);}
+.task.done .check{background:var(--ok); border-color:var(--ok);}
+.task.done .label{text-decoration:line-through; color:var(--ink-soft);}
+
+.footer{text-align:center; font-weight:800; font-size:1.25rem; color:#e5679a; margin-top:26px;
+  transition:opacity .4s ease; min-height:1.6em;}
+.footer.fading{opacity:0;}
+
+/* ---------- Sheet (indstillinger) ---------- */
+.backdrop{position:fixed; inset:0; background:rgba(20,14,30,.45); z-index:70;
+  display:none; align-items:flex-end; justify-content:center;}
+.backdrop.show{display:flex;}
+.sheet{background:#fbf7ff; width:100%; max-width:600px; border-radius:26px 26px 0 0;
+  padding:22px 22px calc(26px + env(safe-area-inset-bottom)); box-shadow:var(--shadow-lg); max-height:88dvh; overflow:auto;}
+.sheet h2{font-size:1.4rem; margin-bottom:12px;}
+.row{display:flex; align-items:center; justify-content:space-between; gap:12px; padding:14px 0; border-bottom:1px solid var(--line);}
+.row:last-of-type{border-bottom:none;}
+.row .desc{font-weight:800;} .row .desc small{display:block; font-weight:600; color:var(--ink-soft); margin-top:2px;}
+.pill{border:2px solid var(--line); background:#fff; color:var(--ink); border-radius:999px;
+  padding:12px 18px; font-weight:800; font-family:var(--font); font-size:1rem; cursor:pointer; min-height:var(--tap);}
+.switch{position:relative; width:58px; height:34px; flex:0 0 auto;}
+.switch input{opacity:0; width:100%; height:100%; margin:0; cursor:pointer;}
+.switch .slider{position:absolute; inset:0; background:#d9d1ca; border-radius:999px; pointer-events:none;}
+.switch .slider::before{content:""; position:absolute; top:3px; left:3px; width:28px; height:28px; background:#fff; border-radius:50%; transition:transform .2s; box-shadow:var(--shadow);}
+.switch input:checked + .slider{background:var(--ok);}
+.switch input:checked + .slider::before{transform:translateX(24px);}
+.privacy{font-size:.9rem; color:var(--ink-soft); line-height:1.5; margin-top:14px;}
+
+.confetti{position:fixed; inset:0; pointer-events:none; overflow:hidden; z-index:60;}
+.confetti span{position:absolute; top:-10vh; font-size:1.8rem; animation:fall linear forwards;}
+@keyframes fall{to{transform:translateY(120vh) rotate(540deg); opacity:.9;}}
+.toast{position:fixed; left:50%; bottom:calc(26px + env(safe-area-inset-bottom)); translate:-50% 0;
+  background:var(--ink); color:#fff; font-weight:800; padding:14px 22px; border-radius:999px;
+  box-shadow:var(--shadow-lg); z-index:90; font-size:1.1rem; opacity:0; transition:opacity .25s; max-width:90vw; text-align:center;}
+.toast.show{opacity:1;}
+.update-bar{position:fixed; left:50%; bottom:calc(26px + env(safe-area-inset-bottom)); translate:-50% 0;
+  display:none; align-items:center; gap:12px; background:var(--ink); color:#fff; padding:12px 16px; border-radius:999px; box-shadow:var(--shadow-lg); z-index:90;}
+.update-bar.show{display:flex;}
+.update-bar button{border:none; background:var(--sun2); color:#fff; border-radius:999px; padding:8px 16px; font-weight:800; font-family:var(--font); cursor:pointer;}
+:focus-visible{outline:3px solid var(--sun2); outline-offset:2px;}
+@media(prefers-reduced-motion:reduce){*{transition:none!important; animation:none!important;}}
+</style>
+</head>
+<body>
+<header class="header">
+  <span class="sun">🌞</span>
+  <div class="when">
+    <div class="clock" id="clock">--.--</div>
+    <div class="date" id="date">…</div>
+  </div>
+  <button id="installBtn" class="install" type="button">⬇ Installér</button>
+  <span class="bank" id="bank">⭐ 0</span>
+  <button id="gear" class="gear" type="button" aria-label="Indstillinger">⚙️</button>
+</header>
+
+<nav class="kids" id="kids" aria-label="Vælg barn"></nav>
+
+<nav class="tabs" id="tabs" role="tablist" aria-label="Vælg tidspunkt"></nav>
+
+<div class="progress">
+  <span class="ptext" id="ptext">0 af 0</span>
+  <div class="bar"><div class="fill" id="fill"></div></div>
+</div>
+
+<main>
+  <div class="list" id="list" role="list"></div>
+</main>
+
+<div class="footer" id="affirm" aria-live="polite">Du er sej – hver dag! ❤️</div>
+
+<div class="backdrop" id="sheet" role="dialog" aria-modal="true" aria-label="Indstillinger">
+  <div class="sheet">
+    <h2>Indstillinger</h2>
+    <div class="row">
+      <span class="desc">Lyd ved klaret opgave<small>Lille jubel-lyd</small></span>
+      <label class="switch"><input id="soundToggle" type="checkbox" /><span class="slider"></span></label>
+    </div>
+    <div class="row">
+      <span class="desc">Børnenes navne<small>Vises på knapperne øverst</small></span>
+      <span style="display:flex; gap:8px;">
+        <button id="renameK1" class="pill" type="button">✎ Barn 1</button>
+        <button id="renameK2" class="pill" type="button">✎ Barn 2</button>
+      </span>
+    </div>
+    <div class="row">
+      <span class="desc">Start dagen forfra<small>Fjern alle kryds for det valgte barn</small></span>
+      <button id="resetToday" class="pill" type="button">Nulstil</button>
+    </div>
+    <p class="privacy">🔒 Alt bliver kun på denne iPad. Intet sendes til internettet – ingen konto, sporing eller reklamer. Planen skifter automatisk efter ugedag og nulstilles hver ny dag.</p>
+    <div class="row" style="justify-content:center; border:none;">
+      <button id="closeSheet" class="pill" type="button" style="min-width:160px;">Luk</button>
+    </div>
+  </div>
+</div>
+
+<div class="update-bar" id="updateBar"><span>Ny version klar</span><button id="reloadBtn" type="button">Opdater</button></div>
+
+<script>
+(function(){
+"use strict";
+
+/* =========================================================================
+   DATA — hentet direkte fra jeres tre plancher (svømning fjernet).
+   Rediger frit: hvert punkt er {x:"tekst", e:"emoji", t:"KL" (valgfrit)}.
+   Ugedag følger Date.getDay(): 0=søndag, 1=mandag ... 6=lørdag.
+   Rutinerne er FÆLLES for begge børn — men hvert barn har sine egne kryds.
+   ========================================================================= */
+var MORNING = [
+  {t:"06.30", x:"Stå op", e:"⏰"},
+  {t:"06.35", x:"Læg nattøj på plads", e:"🧦"},
+  {t:"06.40", x:"Tag tøj på", e:"👕"},
+  {t:"06.50", x:"Læg beskidt tøj til vask", e:"🧺"},
+  {t:"06.55", x:"Red seng", e:"🛏️"},
+  {t:"07.00", x:"Spis morgenmad", e:"🥣"},
+  {t:"07.20", x:"Vær færdig med morgenmad", e:"⭐"},
+  {t:"07.25", x:"Pak madpakke", e:"🥪"},
+  {t:"07.30", x:"Vask dig", e:"🧼"},
+  {t:"07.35", x:"Børst tænder", e:"🪥"},
+  {t:"07.38", x:"Solcreme på", e:"🧴"},
+  {t:"07.40", x:"Red hår", e:"🪮"},
+  {t:"07.42", x:"Sko og jakke på", e:"🧥"},
+  {t:"07.45", x:"Ud ad døren", e:"🚪"}
+];
+
+var AFT_BASE = [
+  {x:"Stil sko, jakke og skoletaske på plads", e:"🎒"},
+  {x:"Tøm madkasser og drikkedunk", e:"🥤"},
+  {x:"Lav opgaver i 10 min.", e:"✏️"},
+  {x:"Læs 20 min.", e:"📚"}
+];
+
+function afternoonFor(day){
+  switch(day){
+    case 1: return AFT_BASE.slice();
+    case 2: return [{t:"16.00", x:"Fodbold", e:"⚽"}].concat(AFT_BASE);
+    case 3: return [
+      {x:"Stil sko, jakke og skoletaske på plads", e:"🎒"},
+      {x:"Hæng håndklæde fra idræt op", e:"🧻"},
+      {x:"Tøm idrætstaske for tøj", e:"🎽"},
+      {x:"Tøm madkasser og drikkedunk", e:"🥤"},
+      {x:"Lav opgaver i 10 min.", e:"✏️"},
+      {x:"Læs 20 min.", e:"📚"}
+    ];
+    case 4: return [{t:"16.00", x:"Fodbold", e:"⚽"}].concat(AFT_BASE);
+    case 5: return AFT_BASE.slice();
+    default: return [];
+  }
+}
+
+var EVENING = {
+  1:[{x:"Tag tallerken og glas ud i køkken",e:"🍽️"},{x:"Ryd alt legetøj op på værelse, have og stuer",e:"🧸"},{x:"Læg ting fra trappe på plads",e:"🪜"},{x:"Pak fodboldtøj",e:"⚽"},{x:"Pak skoletaske til dagen efter",e:"🎒"},{x:"Lav madpakke",e:"🥪"},{x:"Læg vasketøj til vask",e:"🧺"},{x:"Børst tænder",e:"🪥"},{x:"Vask ansigt",e:"🧼"},{x:"Læg tøj frem til næste dag",e:"👕"}],
+  2:[{x:"Hjælp med at tage ud af bordet efter aftensmad",e:"🍽️"},{x:"Ryd alt legetøj op på værelse, have og stuer",e:"🧸"},{x:"Læg ting fra trappe på plads",e:"🪜"},{x:"Pak idrætstøj",e:"🎽"},{x:"Pak skoletaske til dagen efter",e:"🎒"},{x:"Læg vasketøj til vask",e:"🧺"},{x:"Børst tænder",e:"🪥"},{x:"Vask ansigt",e:"🧼"},{x:"Læg tøj frem til næste dag",e:"👕"}],
+  3:[{x:"Tag tallerken og glas ud i køkken",e:"🍽️"},{x:"Ryd alt legetøj op på værelse, have og stuer",e:"🧸"},{x:"Læg ting fra trappe på plads",e:"🪜"},{x:"Pak fodboldtøj",e:"⚽"},{x:"Pak skoletaske til dagen efter",e:"🎒"},{x:"Læg vasketøj til vask",e:"🧺"},{x:"Børst tænder",e:"🪥"},{x:"Vask ansigt",e:"🧼"},{x:"Læg tøj frem til næste dag",e:"👕"}],
+  4:[{x:"Tag tallerken og glas ud i køkken",e:"🍽️"},{x:"Ryd alt legetøj op på værelse, have og stuer",e:"🧸"},{x:"Læg ting fra trappe på plads",e:"🪜"},{x:"Pak skoletaske til dagen efter",e:"🎒"},{x:"Læg vasketøj til vask",e:"🧺"},{x:"Børst tænder",e:"🪥"},{x:"Vask ansigt",e:"🧼"},{x:"Læg tøj frem til næste dag",e:"👕"}],
+  5:[{x:"Tag tallerken og glas ud i køkken",e:"🍽️"},{x:"Ryd alt legetøj op på værelse, have og stuer",e:"🧸"},{x:"Læg ting fra trappe på plads",e:"🪜"},{x:"Læg vasketøj til vask",e:"🧺"},{x:"Børst tænder",e:"🪥"},{x:"Vask ansigt",e:"🧼"},{x:"Læg tøj frem til næste dag",e:"👕"}],
+  6:[{x:"Hjælp med at tage ud af bordet efter aftensmad",e:"🍽️"},{x:"Ryd alt legetøj op på værelse, have og stuer",e:"🧸"},{x:"Læg ting fra trappe på plads",e:"🪜"},{x:"Læg vasketøj til vask",e:"🧺"},{x:"Børst tænder",e:"🪥"},{x:"Vask ansigt",e:"🧼"},{x:"Læg tøj frem til næste dag",e:"👕"}],
+  0:[{x:"Tag tallerken og glas ud i køkken",e:"🍽️"},{x:"Ryd alt legetøj op på værelse, have og stuer",e:"🧸"},{x:"Læg ting fra trappe på plads",e:"🪜"},{x:"Pak biblioteksbøger",e:"📚"},{x:"I bad og vask hår",e:"🛁"},{x:"Læg vasketøj til vask",e:"🧺"},{x:"Børst tænder",e:"🪥"},{x:"Vask ansigt",e:"🧼"},{x:"Læg tøj frem til næste dag",e:"👕"},{x:"Pak skoletaske – tjek penalhus",e:"🎒"}]
+};
+
+var DAYS_DA = ["søndag","mandag","tirsdag","onsdag","torsdag","fredag","lørdag"];
+var MONTHS_DA = ["januar","februar","marts","april","maj","juni","juli","august","september","oktober","november","december"];
+var TINTS = ["#fff3c9","#e3f6cf","#dcecff","#ece1ff","#ffe0ef","#ffe8cf","#e6f7f2"];
+
+/* ---------------- Rene hjælpere (testbare) ---------------- */
+function todayStr(d){ d=d||new Date();
+  return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
+
+function buildDay(day){
+  var periods = [];
+  var m = (day>=1 && day<=5) ? MORNING : [];
+  var a = afternoonFor(day);
+  var e = EVENING[day] || [];
+  if(m.length) periods.push({key:"morning", label:"Morgen", emoji:"☀️", accent:"#ffb03a", tasks:m});
+  if(a.length) periods.push({key:"afternoon", label:"Eftermiddag", emoji:"🏠", accent:"#4dabf7", tasks:a});
+  if(e.length) periods.push({key:"evening", label:"Aften", emoji:"🌙", accent:"#9775fa", tasks:e});
+  periods.forEach(function(p){ p.tasks = p.tasks.map(function(t,i){ return {id:p.key+"-"+i, t:t.t||null, x:t.x, e:t.e}; }); });
+  return periods;
+}
+
+// "Ny dag ny data": ryd ALLE børns kryds når datoen skifter (lokal dato, ikke UTC).
+function applyNewDay(st, today){
+  today = today || todayStr();
+  if(st.date === today) return false;
+  st.date = today;
+  Object.keys(st.kids).forEach(function(k){ st.kids[k].done = {}; });
+  return true;
+}
+
+// Migrér gammelt single-barn-format {done, stars} -> to-børns format.
+function migrate(st){
+  if(!st || typeof st!=="object") st = {};
+  if(!st.kids || typeof st.kids!=="object"){
+    st.kids = {
+      k1:{name:"Barn 1", emoji:"🦊", color:"#ffb03a", stars:0, done:{}},
+      k2:{name:"Barn 2", emoji:"🐻", color:"#4dabf7", stars:0, done:{}}
+    };
+    // Gamle data (fra én-barns-versionen) flyttes over på barn 1, intet tabes.
+    if(st.done && typeof st.done==="object"){ st.kids.k1.done = st.done; delete st.done; }
+    if(typeof st.stars==="number"){ st.kids.k1.stars = st.stars; delete st.stars; }
+  }
+  ["k1","k2"].forEach(function(k){
+    var kid = st.kids[k];
+    if(!kid) { st.kids[k] = {name:(k==="k1"?"Barn 1":"Barn 2"), emoji:(k==="k1"?"🦊":"🐻"), color:(k==="k1"?"#ffb03a":"#4dabf7"), stars:0, done:{}}; return; }
+    if(typeof kid.name!=="string" || !kid.name) kid.name = (k==="k1"?"Barn 1":"Barn 2");
+    if(typeof kid.stars!=="number") kid.stars = 0;
+    if(!kid.done || typeof kid.done!=="object") kid.done = {};
+  });
+  if(st.active!=="k1" && st.active!=="k2") st.active = "k1";
+  if(!st.settings || typeof st.settings!=="object") st.settings = {sound:true};
+  if(typeof st.settings.sound!=="boolean") st.settings.sound = true;
+  if(!st.date) st.date = todayStr();
+  return st;
+}
+
+if(typeof window!=="undefined"){ window.__test = {todayStr, buildDay, applyNewDay, migrate, afternoonFor, EVENING, MORNING}; }
+if(typeof document==="undefined" || !document.getElementById("list")) return;
+
+/* ---------------- State ---------------- */
+var KEY = "min-dag:v1"; // samme nøgle: migrate() løfter gamle data uden tab
+function load(){
+  var st = null;
+  try{ var raw = localStorage.getItem(KEY); st = raw ? JSON.parse(raw) : null; }catch(e){ st = null; }
+  return migrate(st);
+}
+function save(){ try{ localStorage.setItem(KEY, JSON.stringify(state)); }catch(e){ console.error(e); } }
+
+var state = load();
+applyNewDay(state); save();
+
+var periods = buildDay(new Date().getDay());
+var activeKey = pickPeriod();
+
+/* ---------------- DOM ---------------- */
+var $ = function(s){ return document.querySelector(s); };
+var els = {
+  clock:$("#clock"), date:$("#date"), bank:$("#bank"), kids:$("#kids"), tabs:$("#tabs"),
+  list:$("#list"), ptext:$("#ptext"), fill:$("#fill"), sheet:$("#sheet"),
+  soundToggle:$("#soundToggle"), updateBar:$("#updateBar"), installBtn:$("#installBtn")
+};
+var reduceMotion = (typeof window.matchMedia==="function") && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+function activeKid(){ return state.kids[state.active]; }
+
+/* ---------------- Periode-valg: følg klokken, men respektér manuelt valg ----------------
+   Reglen: fanen følger klokkeslættet automatisk (morgen < 12, eftermiddag < 18, ellers aften).
+   Trykker nogen selv på en fane, vinder det valg i OVERRIDE_MS (1 time) — derefter
+   følger appen klokken igen. Ved dagsskift nulstilles det manuelle valg. */
+var OVERRIDE_MS = 60 * 60 * 1000;
+var manual = null; // {key, at} eller null
+
+function autoKey(hour, ps){
+  var want = hour < 12 ? "morning" : (hour < 18 ? "afternoon" : "evening");
+  if(ps.some(function(p){return p.key===want;})) return want;
+  return ps.length ? ps[ps.length-1].key : "evening";
+}
+function resolveActive(nowMs, hour, man, ps){
+  if(man && (nowMs - man.at) < OVERRIDE_MS && ps.some(function(p){return p.key===man.key;})){
+    return man.key; // manuelt valg gælder stadig
+  }
+  return autoKey(hour, ps);
+}
+function pickPeriod(){ return resolveActive(Date.now(), new Date().getHours(), manual, periods); }
+function activePeriod(){ return periods.find(function(p){return p.key===activeKey;}) || periods[0]; }
+function periodDone(p, kid){ if(!p) return 0; return p.tasks.filter(function(t){return kid.done[t.id];}).length; }
+
+/* ---------------- Rendering ---------------- */
+function renderClock(){
+  var now = new Date();
+  els.clock.textContent = String(now.getHours()).padStart(2,"0")+"."+String(now.getMinutes()).padStart(2,"0");
+  els.date.textContent = DAYS_DA[now.getDay()]+" d. "+now.getDate()+". "+MONTHS_DA[now.getMonth()];
+}
+
+function renderKids(){
+  els.kids.replaceChildren();
+  ["k1","k2"].forEach(function(k){
+    var kid = state.kids[k];
+    var b = document.createElement("button");
+    b.className = "kid"; b.type = "button";
+    b.setAttribute("aria-current", String(state.active===k));
+    b.style.setProperty("--kc", kid.color);
+    var ke = document.createElement("span"); ke.className="ke"; ke.textContent = kid.emoji;
+    var nm = document.createElement("span"); nm.textContent = kid.name; // textContent = sikkert
+    var ks = document.createElement("span"); ks.className="kstars"; ks.textContent = "⭐ "+kid.stars;
+    b.append(ke, nm, ks);
+    b.addEventListener("click", function(){ state.active = k; save(); renderAll(); });
+    els.kids.append(b);
+  });
+}
+
+function renderTabs(){
+  els.tabs.replaceChildren();
+  var kid = activeKid();
+  periods.forEach(function(p){
+    var b = document.createElement("button");
+    b.className = "tab"; b.type = "button"; b.setAttribute("role","tab");
+    b.setAttribute("aria-selected", String(p.key===activeKey));
+    b.style.setProperty("--accent", p.accent);
+    var te = document.createElement("span"); te.className="te"; te.textContent = p.emoji;
+    var lab = document.createElement("span"); lab.textContent = p.label;
+    b.append(te, lab);
+    var total = p.tasks.length, done = periodDone(p, kid);
+    if(total && done===total){ var ck=document.createElement("span"); ck.className="check-badge"; ck.textContent="✓"; b.append(ck); }
+    b.addEventListener("click", function(){
+      manual = {key: p.key, at: Date.now()}; // manuelt valg: vinder over uret i 1 time
+      activeKey = p.key;
+      renderAll();
+    });
+    els.tabs.append(b);
+  });
+}
+
+function renderProgress(){
+  var kid = activeKid();
+  var p = activePeriod(); var total = p?p.tasks.length:0; var done = periodDone(p, kid);
+  els.ptext.textContent = done+" af "+total+" klaret";
+  els.fill.style.width = total ? Math.round(done/total*100)+"%" : "0%";
+  document.documentElement.style.setProperty("--accent", p?p.accent:"#ffb03a");
+  els.bank.textContent = "⭐ "+kid.stars;
+}
+
+function renderList(){
+  var kid = activeKid();
+  var p = activePeriod();
+  els.list.replaceChildren();
+  els.list.classList.toggle("two", p && p.tasks.length>6);
+  if(!p) return;
+  p.tasks.forEach(function(task, i){
+    var done = !!kid.done[task.id];
+    var row = document.createElement("div");
+    row.className = "task"+(done?" done":""); row.setAttribute("role","listitem");
+    row.style.setProperty("--tint", TINTS[i % TINTS.length]);
+    if(task.t){ var tm=document.createElement("span"); tm.className="time"; tm.textContent=task.t; row.append(tm); }
+    var em = document.createElement("span"); em.className="emoji"; em.textContent = task.e; row.append(em);
+    var lab = document.createElement("span"); lab.className="label"; lab.textContent = task.x; row.append(lab);
+    var ck = document.createElement("span"); ck.className="check"; ck.textContent = done?"✓":""; row.append(ck);
+    row.addEventListener("click", function(){ toggle(task.id); });
+    els.list.append(row);
+  });
+}
+
+function renderAll(){ renderKids(); renderTabs(); renderProgress(); renderList(); }
+
+/* ---------------- Handlinger ---------------- */
+function toggle(id){
+  var kid = activeKid();
+  var was = !!kid.done[id];
+  if(was){ delete kid.done[id]; }
+  else{ kid.done[id] = true; kid.stars += 1; chime(); } // stjerner pr. barn, mistes aldrig
+  save(); renderAll();
+  var p = activePeriod();
+  if(!was && p && p.tasks.every(function(t){return kid.done[t.id];})) celebrate(kid.name+": "+p.label);
+}
+
+function resetToday(){
+  var kid = activeKid();
+  var p = activePeriod();
+  p.tasks.forEach(function(t){ delete kid.done[t.id]; });
+  save(); renderAll();
+}
+
+function renameKid(k){
+  var kid = state.kids[k];
+  var name = prompt("Hvad hedder barnet?", kid.name);
+  if(!name || !name.trim()) return;
+  kid.name = name.trim().slice(0, 16);
+  save(); renderAll(); refreshSheet();
+}
+
+/* ---------------- Lyd / fejring / toast ---------------- */
+var audioCtx;
+function chime(){
+  if(!state.settings.sound) return;
+  try{
+    var Ctx = window.AudioContext || window.webkitAudioContext; if(!Ctx) return;
+    audioCtx = audioCtx || new Ctx(); if(audioCtx.state==="suspended") audioCtx.resume();
+    var now = audioCtx.currentTime;
+    [523.25,659.25,783.99].forEach(function(f,i){
+      var o=audioCtx.createOscillator(), g=audioCtx.createGain(); o.type="sine"; o.frequency.value=f;
+      o.connect(g); g.connect(audioCtx.destination); var at=now+i*0.08;
+      g.gain.setValueAtTime(0.0001,at); g.gain.exponentialRampToValueAtTime(0.22,at+0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001,at+0.25); o.start(at); o.stop(at+0.3);
+    });
+  }catch(e){}
+}
+function celebrate(label){
+  toast(label+" er klaret! 🎉");
+  if(reduceMotion) return;
+  var layer=document.createElement("div"); layer.className="confetti";
+  var bits=["🎉","⭐","✨","🎈","🌈"];
+  for(var i=0;i<26;i++){ var s=document.createElement("span"); s.textContent=bits[i%bits.length];
+    s.style.left=Math.random()*100+"vw"; s.style.animationDuration=(1.6+Math.random()*1.4)+"s";
+    s.style.animationDelay=(Math.random()*0.4)+"s"; layer.append(s); }
+  document.body.append(layer); setTimeout(function(){layer.remove();},3200);
+}
+var toastTimer;
+function toast(msg){
+  var el=document.querySelector(".toast"); if(!el){ el=document.createElement("div"); el.className="toast"; document.body.append(el); }
+  el.textContent=msg; el.classList.add("show"); clearTimeout(toastTimer);
+  toastTimer=setTimeout(function(){el.classList.remove("show");},2200);
+}
+
+/* ---------------- Indstillinger ---------------- */
+function refreshSheet(){
+  els.soundToggle.checked = !!state.settings.sound;
+  $("#renameK1").textContent = "✎ " + state.kids.k1.name;
+  $("#renameK2").textContent = "✎ " + state.kids.k2.name;
+}
+$("#gear").addEventListener("click", function(){ refreshSheet(); els.sheet.classList.add("show"); });
+$("#closeSheet").addEventListener("click", function(){ els.sheet.classList.remove("show"); });
+els.sheet.addEventListener("click", function(e){ if(e.target===els.sheet) els.sheet.classList.remove("show"); });
+els.soundToggle.addEventListener("change", function(){ state.settings.sound=els.soundToggle.checked; save(); });
+$("#renameK1").addEventListener("click", function(){ renameKid("k1"); });
+$("#renameK2").addEventListener("click", function(){ renameKid("k2"); });
+$("#resetToday").addEventListener("click", function(){ resetToday(); els.sheet.classList.remove("show"); });
+
+/* ---------------- Selvtillids-udsagn i footeren ---------------- */
+// 10 udsagn. Startindeks følger dagens dato, så dagen begynder med et "nyt"
+// udsagn — derefter roterer den stille videre, mens appen står åben.
+var AFFIRM = [
+  "Du er sej – hver dag! ❤️",
+  "Du kan mere, end du tror! 💪",
+  "Godt gået – bliv ved! 🌟",
+  "Fejl er bare øvelse! 🌱",
+  "Du gør dit bedste, og det er nok! 🤗",
+  "Én opgave ad gangen – du klarer det! 🐢",
+  "Du bliver bedre hver eneste dag! 🚀",
+  "Vær stolt af dig selv! 🦁",
+  "Du lyser dagen op! ☀️",
+  "Modig, venlig og stærk – det er dig! 🌈"
+];
+var affirmIdx = (function(){
+  var d = new Date();
+  return (d.getFullYear() + d.getMonth() + d.getDate()) % AFFIRM.length;
+})();
+function nextAffirm(){
+  affirmIdx = (affirmIdx + 1) % AFFIRM.length;
+  var el = document.getElementById("affirm");
+  el.classList.add("fading");
+  setTimeout(function(){
+    el.textContent = AFFIRM[affirmIdx];   // textContent: kun vores egne strenge, men vanen holdes
+    el.classList.remove("fading");
+  }, 400);
+}
+document.getElementById("affirm").textContent = AFFIRM[affirmIdx];
+setInterval(nextAffirm, 20000);           // skift hvert 20. sekund
+if(typeof window!=="undefined" && window.__test){ window.__test.AFFIRM = AFFIRM; window.__test.nextAffirm = nextAffirm; }
+
+/* ---------------- Ur der tikker + auto-fane + midnats-skift ---------------- */
+renderClock(); renderAll();
+function tick(){
+  renderClock();
+  var dayChanged = applyNewDay(state);
+  if(dayChanged){
+    save();
+    periods = buildDay(new Date().getDay());
+    manual = null; // ny dag: glem gårsdagens manuelle valg
+  }
+  var next = resolveActive(Date.now(), new Date().getHours(), manual, periods);
+  var keyChanged = next !== activeKey;
+  activeKey = next;
+  if(dayChanged || keyChanged) renderAll();
+}
+setInterval(tick, 15000);
+window.__test.autoKey = autoKey;
+window.__test.resolveActive = resolveActive;
+window.__test.OVERRIDE_MS = OVERRIDE_MS;
+window.__test.tick = tick;
+window.__test.getManual = function(){ return manual; };
+
+/* ---------------- PWA: installation + opdatering ---------------- */
+var deferredInstall=null;
+window.addEventListener("beforeinstallprompt", function(e){ e.preventDefault(); deferredInstall=e; els.installBtn.classList.add("show"); });
+els.installBtn.addEventListener("click", function(){ if(!deferredInstall) return; deferredInstall.prompt(); deferredInstall.userChoice.then(function(){ deferredInstall=null; els.installBtn.classList.remove("show"); }); });
+window.addEventListener("appinstalled", function(){ els.installBtn.classList.remove("show"); });
+
+if("serviceWorker" in navigator){
+  var waiting=null, refreshing=false;
+  navigator.serviceWorker.register("./sw.js").then(function(reg){
+    reg.addEventListener("updatefound", function(){
+      var nw=reg.installing; if(!nw) return;
+      nw.addEventListener("statechange", function(){
+        if(nw.state==="installed" && navigator.serviceWorker.controller){ waiting=nw; els.updateBar.classList.add("show"); }
+      });
+    });
+  }).catch(function(err){ console.warn("SW fejlede:", err); });
+  $("#reloadBtn").addEventListener("click", function(){ if(waiting) waiting.postMessage({type:"SKIP_WAITING"}); els.updateBar.classList.remove("show"); });
+  navigator.serviceWorker.addEventListener("controllerchange", function(){ if(refreshing) return; refreshing=true; window.location.reload(); });
+}
+})();
+</script>
+</body>
+</html>
