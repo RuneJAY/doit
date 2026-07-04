@@ -239,6 +239,24 @@ var AFT_BASE = [
   {x:"Læs 20 min.", e:"📚"}
 ];
 
+/* Weekend: samme rutiner som hverdage, men uden skole-punkter og uden faste
+   klokkeslæt. Ret frit til jeres weekend-vaner. */
+var WEEKEND_MORNING = [
+  {x:"Stå op", e:"⏰"},
+  {x:"Læg nattøj på plads", e:"🧦"},
+  {x:"Tag tøj på", e:"👕"},
+  {x:"Læg beskidt tøj til vask", e:"🧺"},
+  {x:"Red seng", e:"🛏️"},
+  {x:"Spis morgenmad", e:"🥣"},
+  {x:"Vask dig", e:"🧼"},
+  {x:"Børst tænder", e:"🪥"},
+  {x:"Red hår", e:"🪮"}
+];
+var WEEKEND_AFTERNOON = [
+  {x:"Ryd op efter leg", e:"🧸"},
+  {x:"Læs 20 min.", e:"📚"}
+];
+
 function afternoonFor(day){
   switch(day){
     case 1: return AFT_BASE.slice();
@@ -253,7 +271,7 @@ function afternoonFor(day){
     ];
     case 4: return [{t:"16.00", x:"Fodbold", e:"⚽"}].concat(AFT_BASE);
     case 5: return AFT_BASE.slice();
-    default: return [];
+    default: return WEEKEND_AFTERNOON.slice(); // lør/søn
   }
 }
 
@@ -277,7 +295,7 @@ function todayStr(d){ d=d||new Date();
 
 function buildDay(day){
   var periods = [];
-  var m = (day>=1 && day<=5) ? MORNING : [];
+  var m = (day>=1 && day<=5) ? MORNING : WEEKEND_MORNING;
   var a = afternoonFor(day);
   var e = EVENING[day] || [];
   if(m.length) periods.push({key:"morning", label:"Morgen", emoji:"☀️", accent:"#ffb03a", tasks:m});

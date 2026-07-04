@@ -1,7 +1,7 @@
 /* Service worker: cacher app-skallen, så appen åbner uden internet.
    index.html indeholder nu styling + kode + skrifter, så cachen er lille.
    VIGTIGT: hæv CACHE-versionen hver gang du ændrer index.html. */
-const CACHE = "min-dag-v6";
+const CACHE = "min-dag-v7";
 
 const APP_SHELL = [
   "./",
