@@ -112,6 +112,22 @@ h1,h2,h3{margin:0; font-weight:800;}
 .task.done .check{background:var(--ok); border-color:var(--ok);}
 .task.done .label{text-decoration:line-through; color:var(--ink-soft);}
 
+.task .rtag{font-size:1rem; opacity:.55; flex:0 0 auto;}
+.task .del{flex:0 0 auto; border:none; background:#fff0ee; color:#e5484d; width:40px; height:40px;
+  border-radius:12px; font-size:1.1rem; cursor:pointer;}
+
+/* ---------- Tilføj egen opgave ---------- */
+.composer{display:flex; gap:10px; margin-top:16px; flex-wrap:wrap;}
+.composer input[type="text"]{flex:1 1 60%; min-height:var(--tap); border:2px solid var(--line);
+  border-radius:16px; padding:0 16px; font-size:1.1rem; font-family:var(--font); font-weight:700;
+  background:#fff; color:var(--ink);}
+.composer input[type="text"]:focus-visible{outline:3px solid var(--sun2); border-color:var(--sun2);}
+.composer .add-btn{min-width:var(--tap); min-height:var(--tap); border:none; border-radius:16px;
+  background:var(--sun2); color:#fff; font-size:1.6rem; cursor:pointer; box-shadow:var(--shadow);}
+.repeat-choice{flex:1 1 100%; display:flex; align-items:center; gap:8px; color:var(--ink-soft);
+  font-weight:700; font-size:.95rem; padding-left:4px;}
+.repeat-choice input{width:22px; height:22px; accent-color:var(--sun2);}
+
 .footer{text-align:center; font-weight:800; font-size:1.25rem; color:#e5679a; margin-top:26px;
   transition:opacity .4s ease; min-height:1.6em;}
 .footer.fading{opacity:0;}
@@ -174,6 +190,16 @@ h1,h2,h3{margin:0; font-weight:800;}
 
 <main>
   <div class="list" id="list" role="list"></div>
+
+  <div class="composer">
+    <input id="newTask" type="text" inputmode="text" enterkeyhint="done"
+           placeholder="Tilføj en opgave til denne fane…" aria-label="Ny opgave" maxlength="60" />
+    <button id="addBtn" class="add-btn" type="button" aria-label="Tilføj opgave">＋</button>
+    <label class="repeat-choice">
+      <input id="repeatNew" type="checkbox" />
+      Gentages hver dag <span style="font-weight:600; opacity:.7;">(ellers kun i dag)</span>
+    </label>
+  </div>
 </main>
 
 <div class="footer" id="affirm" aria-live="polite">Du er sej – hver dag! ❤️</div>
@@ -293,6 +319,9 @@ var TINTS = ["#fff3c9","#e3f6cf","#dcecff","#ece1ff","#ffe0ef","#ffe8cf","#e6f7f
 function todayStr(d){ d=d||new Date();
   return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 
+var _seq = 0;
+function uid(){ return Date.now().toString(36) + (_seq++).toString(36); }
+
 function buildDay(day){
   var periods = [];
   var m = (day>=1 && day<=5) ? MORNING : WEEKEND_MORNING;
@@ -306,11 +335,13 @@ function buildDay(day){
 }
 
 // "Ny dag ny data": ryd ALLE børns kryds når datoen skifter (lokal dato, ikke UTC).
+// Egne engangsopgaver fjernes; permanente (recurring) beholdes.
 function applyNewDay(st, today){
   today = today || todayStr();
   if(st.date === today) return false;
   st.date = today;
   Object.keys(st.kids).forEach(function(k){ st.kids[k].done = {}; });
+  st.custom = (st.custom || []).filter(function(c){ return c.recurring; });
   return true;
 }
 
@@ -336,6 +367,7 @@ function migrate(st){
   if(st.active!=="k1" && st.active!=="k2") st.active = "k1";
   if(!st.settings || typeof st.settings!=="object") st.settings = {sound:true};
   if(typeof st.settings.sound!=="boolean") st.settings.sound = true;
+  if(!Array.isArray(st.custom)) st.custom = [];
   if(!st.date) st.date = todayStr();
   return st;
 }
@@ -389,7 +421,16 @@ function resolveActive(nowMs, hour, man, ps){
 }
 function pickPeriod(){ return resolveActive(Date.now(), new Date().getHours(), manual, periods); }
 function activePeriod(){ return periods.find(function(p){return p.key===activeKey;}) || periods[0]; }
-function periodDone(p, kid){ if(!p) return 0; return p.tasks.filter(function(t){return kid.done[t.id];}).length; }
+
+/* Egne opgaver for en fane. Engangsopgaver fra tidligere dage er allerede
+   fjernet ved dagsskift, så alt i state.custom gælder i dag. */
+function customFor(periodKey){
+  return (state.custom || [])
+    .filter(function(c){ return c.period === periodKey; })
+    .map(function(c){ return {id:c.id, t:null, x:c.x, e:"📝", custom:true, recurring:!!c.recurring}; });
+}
+function tasksOf(p){ return p ? p.tasks.concat(customFor(p.key)) : []; }
+function periodDone(p, kid){ return tasksOf(p).filter(function(t){return kid.done[t.id];}).length; }
 
 /* ---------------- Rendering ---------------- */
 function renderClock(){
@@ -426,7 +467,7 @@ function renderTabs(){
     var te = document.createElement("span"); te.className="te"; te.textContent = p.emoji;
     var lab = document.createElement("span"); lab.textContent = p.label;
     b.append(te, lab);
-    var total = p.tasks.length, done = periodDone(p, kid);
+    var total = tasksOf(p).length, done = periodDone(p, kid);
     if(total && done===total){ var ck=document.createElement("span"); ck.className="check-badge"; ck.textContent="✓"; b.append(ck); }
     b.addEventListener("click", function(){
       manual = {key: p.key, at: Date.now()}; // manuelt valg: vinder over uret i 1 time
@@ -439,7 +480,7 @@ function renderTabs(){
 
 function renderProgress(){
   var kid = activeKid();
-  var p = activePeriod(); var total = p?p.tasks.length:0; var done = periodDone(p, kid);
+  var p = activePeriod(); var total = tasksOf(p).length; var done = periodDone(p, kid);
   els.ptext.textContent = done+" af "+total+" klaret";
   els.fill.style.width = total ? Math.round(done/total*100)+"%" : "0%";
   document.documentElement.style.setProperty("--accent", p?p.accent:"#ffb03a");
@@ -450,9 +491,10 @@ function renderList(){
   var kid = activeKid();
   var p = activePeriod();
   els.list.replaceChildren();
-  els.list.classList.toggle("two", p && p.tasks.length>6);
+  var all = tasksOf(p);
+  els.list.classList.toggle("two", all.length>6);
   if(!p) return;
-  p.tasks.forEach(function(task, i){
+  all.forEach(function(task, i){
     var done = !!kid.done[task.id];
     var row = document.createElement("div");
     row.className = "task"+(done?" done":""); row.setAttribute("role","listitem");
@@ -460,7 +502,17 @@ function renderList(){
     if(task.t){ var tm=document.createElement("span"); tm.className="time"; tm.textContent=task.t; row.append(tm); }
     var em = document.createElement("span"); em.className="emoji"; em.textContent = task.e; row.append(em);
     var lab = document.createElement("span"); lab.className="label"; lab.textContent = task.x; row.append(lab);
+    if(task.custom && task.recurring){
+      var rt = document.createElement("span"); rt.className="rtag"; rt.textContent="🔁";
+      rt.title="Gentages hver dag"; row.append(rt);
+    }
     var ck = document.createElement("span"); ck.className="check"; ck.textContent = done?"✓":""; row.append(ck);
+    if(task.custom){
+      var del = document.createElement("button"); del.className="del"; del.type="button"; del.textContent="✕";
+      del.setAttribute("aria-label","Slet opgave");
+      del.addEventListener("click", function(ev){ ev.stopPropagation(); deleteCustom(task.id); });
+      row.append(del);
+    }
     row.addEventListener("click", function(){ toggle(task.id); });
     els.list.append(row);
   });
@@ -476,13 +528,36 @@ function toggle(id){
   else{ kid.done[id] = true; kid.stars += 1; chime(); } // stjerner pr. barn, mistes aldrig
   save(); renderAll();
   var p = activePeriod();
-  if(!was && p && p.tasks.every(function(t){return kid.done[t.id];})) celebrate(kid.name+": "+p.label);
+  if(!was && p && tasksOf(p).every(function(t){return kid.done[t.id];})) celebrate(kid.name+": "+p.label);
 }
 
 function resetToday(){
   var kid = activeKid();
   var p = activePeriod();
-  p.tasks.forEach(function(t){ delete kid.done[t.id]; });
+  tasksOf(p).forEach(function(t){ delete kid.done[t.id]; });
+  save(); renderAll();
+}
+
+function addTask(){
+  var input = document.getElementById("newTask");
+  var text = input.value.trim();
+  if(!text) return;
+  state.custom.push({
+    id: "c" + uid(),
+    period: activeKey,                                   // lægges på den fane, der er åben
+    x: text.slice(0, 60),
+    recurring: document.getElementById("repeatNew").checked,
+    date: state.date
+  });
+  input.value = "";
+  save(); renderAll();
+  input.focus();
+}
+
+function deleteCustom(id){
+  if(!confirm("Slet denne opgave?")) return;
+  state.custom = state.custom.filter(function(c){ return c.id !== id; });
+  Object.keys(state.kids).forEach(function(k){ delete state.kids[k].done[id]; });
   save(); renderAll();
 }
 
@@ -540,6 +615,8 @@ els.soundToggle.addEventListener("change", function(){ state.settings.sound=els.
 $("#renameK1").addEventListener("click", function(){ renameKid("k1"); });
 $("#renameK2").addEventListener("click", function(){ renameKid("k2"); });
 $("#resetToday").addEventListener("click", function(){ resetToday(); els.sheet.classList.remove("show"); });
+$("#addBtn").addEventListener("click", addTask);
+document.getElementById("newTask").addEventListener("keydown", function(e){ if(e.key==="Enter") addTask(); });
 
 /* ---------------- Selvtillids-udsagn i footeren ---------------- */
 // 10 udsagn. Startindeks følger dagens dato, så dagen begynder med et "nyt"
